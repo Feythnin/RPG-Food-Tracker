@@ -28,3 +28,16 @@ export function useEvaluateTasks() {
     },
   });
 }
+
+export function useToggleTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (taskId: number) => {
+      const { data } = await api.post(`/game/task/${taskId}/toggle`);
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['game'] });
+    },
+  });
+}

@@ -51,6 +51,29 @@ router.post('/evaluate', authenticate, async (req: AuthRequest, res: Response, n
   } catch (err) { next(err); }
 });
 
+// Toggle a manual task (exercise)
+router.post('/task/:id/toggle', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) throw new AppError('Invalid ID', 400);
+
+    const task = await prisma.dailyTask.findUnique({ where: { id } });
+    if (!task || task.userId !== req.userId!) throw new AppError('Task not found', 404);
+
+    const manualTypes = ['exercise_arms', 'exercise_legs', 'exercise_cardio'];
+    if (!manualTypes.includes(task.taskType)) {
+      throw new AppError('This task cannot be toggled manually', 400);
+    }
+
+    const updated = await prisma.dailyTask.update({
+      where: { id },
+      data: { completed: !task.completed },
+    });
+
+    res.json({ task: updated });
+  } catch (err) { next(err); }
+});
+
 // Get weekly records
 router.get('/history', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {

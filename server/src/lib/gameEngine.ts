@@ -15,6 +15,19 @@ const TASK_POOL = [
   { taskType: 'water_goal', description: 'Drink your water goal' },
 ];
 
+// Exercise tasks by day of week (0=Sun, 1=Mon, ..., 6=Sat)
+const EXERCISE_BY_DAY: Record<number, { taskType: string; description: string } | null> = {
+  0: null, // Sunday - rest
+  1: { taskType: 'exercise_arms', description: 'Arm day workout' },
+  2: { taskType: 'exercise_legs', description: 'Leg day workout' },
+  3: { taskType: 'exercise_arms', description: 'Arm day workout' },
+  4: { taskType: 'exercise_legs', description: 'Leg day workout' },
+  5: { taskType: 'exercise_cardio', description: 'Cardio workout' },
+  6: null, // Saturday - rest
+};
+
+const MANUAL_TASK_TYPES = new Set(['exercise_arms', 'exercise_legs', 'exercise_cardio']);
+
 export async function generateDailyTasks(userId: number): Promise<void> {
   const date = todayDateKey();
 
@@ -40,6 +53,13 @@ export async function generateDailyTasks(userId: number): Promise<void> {
   // Shuffle extra pool and pick remaining
   const shuffled = extraPool.sort(() => Math.random() - 0.5);
   const selected = [...coreTasks, ...shuffled.slice(0, taskCount - 3)];
+
+  // Add exercise task for today's day of the week
+  const today = new Date();
+  const exerciseTask = EXERCISE_BY_DAY[today.getDay()];
+  if (exerciseTask) {
+    selected.push(exerciseTask);
+  }
 
   await prisma.dailyTask.createMany({
     data: selected.map((task) => ({
@@ -140,14 +160,19 @@ export async function evaluateTasks(userId: number): Promise<{ completed: number
   let newlyCompleted = 0;
 
   for (const task of tasks) {
+    // Skip manual tasks (exercise) - user toggles these themselves
+    if (MANUAL_TASK_TYPES.has(task.taskType)) continue;
+
     let completed = false;
     switch (task.taskType) {
       case 'log_breakfast': completed = mealTypes.has('breakfast'); break;
       case 'log_lunch': completed = mealTypes.has('lunch'); break;
       case 'log_dinner': completed = mealTypes.has('dinner'); break;
-      case 'calorie_target':
-        completed = totalCalories > 0 && totalCalories <= (user.dailyCalories || 2000) * 1.1;
+      case 'calorie_target': {
+        const allMealsLogged = mealTypes.has('breakfast') && mealTypes.has('lunch') && mealTypes.has('dinner');
+        completed = allMealsLogged && totalCalories <= (user.dailyCalories || 2000) * 1.1;
         break;
+      }
       case 'protein_target':
         completed = totalProtein >= (user.dailyProtein || 100);
         break;

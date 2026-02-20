@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useGameState, useEvaluateTasks } from '../hooks/useGame';
+import { useGameState, useEvaluateTasks, useToggleTask } from '../hooks/useGame';
 import { useGameStore } from '../stores/gameStore';
 import { useAuthStore } from '../stores/authStore';
 
@@ -55,10 +55,12 @@ export default function Dashboard() {
   const gameState = useGameStore();
   const { data, isLoading, error } = useGameState();
   const evaluateTasks = useEvaluateTasks();
+  const toggleTask = useToggleTask();
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpLevel, setLevelUpLevel] = useState(0);
 
   const tasks: Task[] = data?.tasks || [];
+  const manualTaskTypes = ['exercise_arms', 'exercise_legs', 'exercise_cardio'];
 
   // Evaluate tasks on load
   useEffect(() => {
@@ -237,49 +239,52 @@ export default function Dashboard() {
             </p>
           ) : (
             <ul className="space-y-2">
-              {tasks.map((task) => (
-                <li
-                  key={task.id}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors ${
-                    task.completed
-                      ? 'bg-accent-green/10 border-accent-green/30'
-                      : 'bg-bg-secondary border-accent-gold/10'
-                  }`}
-                >
-                  {/* Checkbox display (read-only) */}
-                  <div
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+              {tasks.map((task) => {
+                const isManual = manualTaskTypes.includes(task.taskType);
+                return (
+                  <li
+                    key={task.id}
+                    onClick={() => isManual && toggleTask.mutate(task.id)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors ${
                       task.completed
-                        ? 'bg-accent-green border-accent-green text-bg-primary'
-                        : 'border-text-muted'
-                    }`}
+                        ? 'bg-accent-green/10 border-accent-green/30'
+                        : 'bg-bg-secondary border-accent-gold/10'
+                    } ${isManual ? 'cursor-pointer hover:border-accent-gold/40' : ''}`}
                   >
-                    {task.completed && (
-                      <svg
-                        className="w-3 h-3"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={3}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
+                    <div
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+                        task.completed
+                          ? 'bg-accent-green border-accent-green text-bg-primary'
+                          : 'border-text-muted'
+                      }`}
+                    >
+                      {task.completed && (
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
 
-                  <span
-                    className={`flex-1 text-sm ${
-                      task.completed ? 'text-text-secondary line-through' : 'text-text-primary'
-                    }`}
-                  >
-                    {task.description}
-                  </span>
+                    <span
+                      className={`flex-1 text-sm ${
+                        task.completed ? 'text-text-secondary line-through' : 'text-text-primary'
+                      }`}
+                    >
+                      {task.description}
+                    </span>
 
-                  <span className="text-xp text-xs font-bold shrink-0">
-                    +{task.xpReward} XP
-                  </span>
-                </li>
-              ))}
+                    <span className="text-xp text-xs font-bold shrink-0">
+                      +{task.xpReward} XP
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
