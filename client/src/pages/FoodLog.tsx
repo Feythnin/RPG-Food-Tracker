@@ -66,6 +66,42 @@ interface FavoriteFood {
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 type ModalTab = 'manual' | 'usda' | 'recipe' | 'favorites' | 'recent';
+type ServingUnit = 'g' | 'oz' | 'fl_oz' | 'cup' | 'tbsp' | 'tsp' | 'ml' | 'lb';
+
+const UNIT_TO_GRAMS: Record<ServingUnit, number> = {
+  g: 1,
+  oz: 28.35,
+  fl_oz: 29.57,
+  cup: 236.6,
+  tbsp: 14.8,
+  tsp: 4.9,
+  ml: 1,
+  lb: 453.6,
+};
+
+const UNIT_LABELS: Record<ServingUnit, string> = {
+  g: 'g',
+  oz: 'oz',
+  fl_oz: 'fl oz',
+  cup: 'cup',
+  tbsp: 'tbsp',
+  tsp: 'tsp',
+  ml: 'ml',
+  lb: 'lb',
+};
+
+function parseServingSize(raw: string | null | undefined): { amount: number; unit: ServingUnit } {
+  if (!raw) return { amount: 100, unit: 'g' };
+  const match = raw.match(/^([\d.]+)\s*(g|oz|fl\s*oz|cup|cups|tbsp|tsp|ml|lb)s?$/i);
+  if (!match) return { amount: parseFloat(raw) || 100, unit: 'g' };
+  const amount = parseFloat(match[1]) || 100;
+  const unitRaw = match[2].toLowerCase().replace(/\s+/g, '_');
+  const unitMap: Record<string, ServingUnit> = {
+    g: 'g', oz: 'oz', fl_oz: 'fl_oz', cup: 'cup', cups: 'cup',
+    tbsp: 'tbsp', tsp: 'tsp', ml: 'ml', lb: 'lb',
+  };
+  return { amount, unit: unitMap[unitRaw] || 'g' };
+}
 
 const MEAL_TYPES: { key: MealType; label: string; icon: string }[] = [
   { key: 'breakfast', label: 'Breakfast', icon: '🌅' },
@@ -88,11 +124,12 @@ interface FormState {
   fat: string;
   fiber: string;
   sodium: string;
-  servingSize: string;
-  servingQty: string;
+  servingAmount: string;
+  servingUnit: ServingUnit;
   isFruit: boolean;
   isVegetable: boolean;
-  // Base per-serving values (set when populating from search)
+  // Base values per baseAmountG grams (set when populating from search)
+  baseAmountG: number | null;
   baseCalories: number | null;
   baseProtein: number | null;
   baseCarbs: number | null;
@@ -109,10 +146,11 @@ const emptyForm: FormState = {
   fat: '',
   fiber: '',
   sodium: '',
-  servingSize: '',
-  servingQty: '1',
+  servingAmount: '',
+  servingUnit: 'g',
   isFruit: false,
   isVegetable: false,
+  baseAmountG: null,
   baseCalories: null,
   baseProtein: null,
   baseCarbs: null,
@@ -293,6 +331,8 @@ function AddFoodModal({
     const f = food.fat ?? 0;
     const fib = food.fiber ?? 0;
     const sod = food.sodium ?? 0;
+    const parsed = parseServingSize(food.servingSize);
+    const baseAmountG = parsed.amount * UNIT_TO_GRAMS[parsed.unit];
     setForm({
       foodName: food.foodName || food.description || '',
       calories: String(cal),
@@ -301,10 +341,11 @@ function AddFoodModal({
       fat: String(f),
       fiber: String(fib),
       sodium: String(sod),
-      servingSize: food.servingSize || '',
-      servingQty: '1',
+      servingAmount: String(parsed.amount),
+      servingUnit: parsed.unit,
       isFruit: food.isFruit ?? false,
       isVegetable: food.isVegetable ?? false,
+      baseAmountG,
       baseCalories: cal,
       baseProtein: prot,
       baseCarbs: carb,
@@ -315,23 +356,25 @@ function AddFoodModal({
     setTab('manual');
   }
 
-  function handleQtyChange(newQty: string) {
-    const qty = parseFloat(newQty) || 0;
-    const hasBase = form.baseCalories !== null;
-    if (hasBase && qty > 0) {
-      setForm({
-        ...form,
-        servingQty: newQty,
-        calories: String(Math.round(form.baseCalories! * qty)),
-        protein: String(Math.round(form.baseProtein! * qty * 10) / 10),
-        carbs: String(Math.round(form.baseCarbs! * qty * 10) / 10),
-        fat: String(Math.round(form.baseFat! * qty * 10) / 10),
-        fiber: String(Math.round(form.baseFiber! * qty * 10) / 10),
-        sodium: String(Math.round(form.baseSodium! * qty)),
-      });
-    } else {
-      setForm({ ...form, servingQty: newQty });
+  function recalcFromServing(amount: string, unit: ServingUnit) {
+    if (form.baseAmountG === null || form.baseCalories === null) {
+      setForm({ ...form, servingAmount: amount, servingUnit: unit });
+      return;
     }
+    const amountNum = parseFloat(amount) || 0;
+    const newGrams = amountNum * UNIT_TO_GRAMS[unit];
+    const multiplier = form.baseAmountG > 0 ? newGrams / form.baseAmountG : 0;
+    setForm({
+      ...form,
+      servingAmount: amount,
+      servingUnit: unit,
+      calories: String(Math.round(form.baseCalories! * multiplier)),
+      protein: String(Math.round(form.baseProtein! * multiplier * 10) / 10),
+      carbs: String(Math.round(form.baseCarbs! * multiplier * 10) / 10),
+      fat: String(Math.round(form.baseFat! * multiplier * 10) / 10),
+      fiber: String(Math.round(form.baseFiber! * multiplier * 10) / 10),
+      sodium: String(Math.round(form.baseSodium! * multiplier)),
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -348,8 +391,8 @@ function AddFoodModal({
       fat: parseFloat(form.fat) || 0,
       fiber: parseFloat(form.fiber) || 0,
       sodium: parseFloat(form.sodium) || 0,
-      servingSize: form.servingSize || undefined,
-      servingQty: parseFloat(form.servingQty) || 1,
+      servingSize: form.servingAmount ? `${form.servingAmount}${UNIT_LABELS[form.servingUnit]}` : undefined,
+      servingQty: 1,
       isFruit: form.isFruit,
       isVegetable: form.isVegetable,
     });
@@ -421,35 +464,42 @@ function AddFoodModal({
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
                 <div>
-                  <label className="block text-text-secondary text-sm mb-1">Serving Size</label>
+                  <label className="block text-text-secondary text-sm mb-1">Amount</label>
                   <input
-                    type="text"
-                    value={form.servingSize}
-                    onChange={(e) => setForm({ ...form, servingSize: e.target.value })}
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={form.servingAmount}
+                    onChange={(e) => recalcFromServing(e.target.value, form.servingUnit)}
                     className="w-full bg-bg-primary border border-bg-hover rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent-gold/50"
-                    placeholder="e.g. 100g"
+                    placeholder="100"
                   />
                 </div>
                 <div>
-                  <label className="block text-text-secondary text-sm mb-1">Servings</label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    min="0.25"
-                    value={form.servingQty}
-                    onChange={(e) => handleQtyChange(e.target.value)}
-                    className="w-full bg-bg-primary border border-bg-hover rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent-gold/50"
-                    placeholder="1"
-                  />
+                  <label className="block text-text-secondary text-sm mb-1">Unit</label>
+                  <select
+                    value={form.servingUnit}
+                    onChange={(e) => recalcFromServing(form.servingAmount, e.target.value as ServingUnit)}
+                    className="w-full bg-bg-primary border border-bg-hover rounded-lg px-2 py-2 text-text-primary text-sm focus:outline-none focus:border-accent-gold/50 cursor-pointer"
+                  >
+                    <option value="g">g</option>
+                    <option value="oz">oz</option>
+                    <option value="lb">lb</option>
+                    <option value="fl_oz">fl oz</option>
+                    <option value="cup">cup</option>
+                    <option value="ml">ml</option>
+                    <option value="tbsp">tbsp</option>
+                    <option value="tsp">tsp</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-text-secondary text-sm mb-1">Calories *</label>
                   <input
                     type="number"
                     value={form.calories}
-                    onChange={(e) => setForm({ ...form, calories: e.target.value, baseCalories: null })}
+                    onChange={(e) => setForm({ ...form, calories: e.target.value, baseCalories: null, baseAmountG: null })}
                     className="w-full bg-bg-primary border border-bg-hover rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent-gold/50"
                     placeholder="0"
                     min="0"
@@ -457,9 +507,9 @@ function AddFoodModal({
                   />
                 </div>
               </div>
-              {form.baseCalories !== null && (
+              {form.baseCalories !== null && form.baseAmountG !== null && (
                 <p className="text-text-muted text-xs -mt-1">
-                  {form.baseCalories} cal per serving &times; {form.servingQty} = {form.calories} cal
+                  {form.baseCalories} cal per {form.baseAmountG}g &rarr; {form.servingAmount}{UNIT_LABELS[form.servingUnit]} = {form.calories} cal
                 </p>
               )}
 
