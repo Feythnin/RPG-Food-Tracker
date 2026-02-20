@@ -1,0 +1,23 @@
+{
+  "name": "weight-tracker",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "db:migrate": "npx prisma migrate dev",
+    "db:seed": "npx prisma db seed",
+    "db:studio": "npx prisma studio"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "dotenv": "^17.3.1",
+    "prisma": "^6.4.1"
+  },
+  "prisma": {
+    "seed": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} server/src/seed.ts"
+  }
+}

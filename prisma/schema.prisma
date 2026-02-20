@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  username      String    @unique
+  passwordHash  String
+  setupComplete Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Profile
+  mode          String?   // "lose", "gain", "maintain"
+  sex           String?   // "male", "female"
+  heightInches  Int?
+  currentWeight Float?
+  goalWeight    Float?
+  age           Int?
+  activityLevel String?   // "sedentary", "light", "moderate", "active", "very_active"
+  dailyCalories Int?
+  dailyProtein  Int?
+  waterGoalOz   Int?      @default(64)
+
+  // Relations
+  gameState     GameState?
+  dailyTasks    DailyTask[]
+  foodLogs      FoodLog[]
+  waterLogs     WaterLog[]
+  weighIns      WeighIn[]
+  inventoryItems InventoryItem[]
+  favoriteFoods FavoriteFood[]
+  weeklyRecords WeeklyRecord[]
+}
+
+model GameState {
+  id          Int    @id @default(autoincrement())
+  userId      Int    @unique
+  user        User   @relation(fields: [userId], references: [id])
+
+  level       Int    @default(1)
+  xp          Int    @default(0)
+  xpToNext    Int    @default(100)
+  health      Int    @default(7)
+  maxHealth   Int    @default(7)
+  coins       Int    @default(0)
+  dungeonTier Int    @default(1)
+  enemyHp     Int    @default(5)
+  enemyMaxHp  Int    @default(5)
+  thirstMeter Int    @default(0) // 0-7, sections filled from missed water
+  weekStartDate DateTime @default(now())
+
+  updatedAt   DateTime @updatedAt
+}
+
+model DailyTask {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+
+  date        DateTime @default(now()) @db.Date
+  taskType    String   // "log_breakfast", "log_lunch", "log_dinner", "calorie_target", "protein_target", "fruit_veg", "fiber", "sodium"
+  description String
+  completed   Boolean  @default(false)
+  xpReward    Int      @default(25)
+
+  @@index([userId, date])
+}
+
+model FoodLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+
+  date        DateTime @default(now()) @db.Date
+  mealType    String   // "breakfast", "lunch", "dinner", "snack"
+  foodName    String
+  servingSize String?
+  servingQty  Float    @default(1)
+
+  calories    Int      @default(0)
+  protein     Float    @default(0)
+  carbs       Float    @default(0)
+  fat         Float    @default(0)
+  fiber       Float    @default(0)
+  sodium      Float    @default(0)
+  sugar       Float    @default(0)
+
+  isFruit     Boolean  @default(false)
+  isVegetable Boolean  @default(false)
+
+  barcode     String?
+  fdcId       String?  // USDA FoodData Central ID
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model WaterLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+
+  date      DateTime @default(now()) @db.Date
+  glasses   Int      @default(1) // each glass = 8oz
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model WeighIn {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+
+  date      DateTime @db.Date
+  weight    Float
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model ShopItem {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String
+  category    String  // "consumable", "cosmetic", "mystery_box"
+  cost        Int
+  effect      String? // JSON string describing the effect
+  rarity      String  @default("common") // "common", "uncommon", "rare", "legendary"
+  spriteColor String  @default("#888888")
+
+  inventoryItems InventoryItem[]
+}
+
+model InventoryItem {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  shopItemId Int
+  shopItem   ShopItem @relation(fields: [shopItemId], references: [id])
+
+  quantity   Int      @default(1)
+  equipped   Boolean  @default(false)
+
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, shopItemId])
+}
+
+model FavoriteFood {
+  id          Int    @id @default(autoincrement())
+  userId      Int
+  user        User   @relation(fields: [userId], references: [id])
+
+  foodName    String
+  servingSize String?
+  calories    Int    @default(0)
+  protein     Float  @default(0)
+  carbs       Float  @default(0)
+  fat         Float  @default(0)
+  fiber       Float  @default(0)
+  sodium      Float  @default(0)
+  sugar       Float  @default(0)
+  isFruit     Boolean @default(false)
+  isVegetable Boolean @default(false)
+  barcode     String?
+  fdcId       String?
+
+  @@unique([userId, foodName])
+}
+
+model WeeklyRecord {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+
+  weekStart   DateTime @db.Date
+  weekEnd     DateTime @db.Date
+  startHealth Int
+  endHealth   Int
+  tasksCompleted Int   @default(0)
+  totalTasks  Int      @default(0)
+  bossDefeated Boolean @default(false)
+  xpEarned    Int      @default(0)
+  coinsEarned Int      @default(0)
+
+  @@unique([userId, weekStart])
+}

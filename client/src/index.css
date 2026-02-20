@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark RPG color palette */
+  --color-bg-primary: #0f0e17;
+  --color-bg-secondary: #1a1a2e;
+  --color-bg-card: #16213e;
+  --color-bg-hover: #1f3460;
+
+  --color-text-primary: #e8e6e3;
+  --color-text-secondary: #a7a9be;
+  --color-text-muted: #6c6f85;
+
+  --color-accent-gold: #f5c542;
+  --color-accent-red: #e74c3c;
+  --color-accent-green: #2ecc71;
+  --color-accent-blue: #3498db;
+  --color-accent-purple: #9b59b6;
+  --color-accent-orange: #e67e22;
+
+  --color-health: #e74c3c;
+  --color-xp: #f5c542;
+  --color-mana: #3498db;
+  --color-coin: #f5c542;
+
+  --color-tier1: #2ecc71;
+  --color-tier2: #3498db;
+  --color-tier3: #9b59b6;
+  --color-boss: #e74c3c;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+/* Pixel-art style borders for RPG feel */
+.rpg-border {
+  border: 2px solid var(--color-accent-gold);
+  box-shadow: inset 0 0 8px rgba(245, 197, 66, 0.1), 0 0 8px rgba(245, 197, 66, 0.1);
+}
+
+.rpg-card {
+  background-color: var(--color-bg-card);
+  border: 1px solid rgba(245, 197, 66, 0.2);
+  border-radius: 0.5rem;
+}
+
+/* XP bar styling */
+.xp-bar {
+  background: linear-gradient(90deg, var(--color-accent-gold), #ffd700);
+  box-shadow: 0 0 6px rgba(245, 197, 66, 0.5);
+}
+
+/* Health heart styling */
+.health-heart {
+  color: var(--color-health);
+  filter: drop-shadow(0 0 2px rgba(231, 76, 60, 0.5));
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-bg-hover);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Animations */
+@keyframes float-up {
+  0% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -80px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) rotate(-2deg); }
+  20%, 40%, 60%, 80% { transform: translateX(4px) rotate(2deg); }
+}
+
+@keyframes scale-up {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1.1); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 197, 66, 0.3); }
+  50% { box-shadow: 0 0 24px rgba(245, 197, 66, 0.6); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes heart-beat {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.15); }
+  50% { transform: scale(1); }
+  75% { transform: scale(1.1); }
+}
+
+@keyframes water-splash {
+  0% { transform: scale(0.8) translateY(10px); opacity: 0; }
+  50% { transform: scale(1.1) translateY(-5px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes dungeon-pulse {
+  0%, 100% { border-color: var(--color-accent-gold); box-shadow: 0 0 8px rgba(245, 197, 66, 0.3); }
+  50% { border-color: #ffd700; box-shadow: 0 0 20px rgba(245, 197, 66, 0.6); }
+}
+
+.animate-float-up { animation: float-up 1.5s ease-out forwards; }
+.animate-shake { animation: shake 1.2s ease-in-out; }
+.animate-scale-up { animation: scale-up 0.8s ease-out forwards; }
+.animate-bounce-in { animation: bounce-in 0.6s ease-out forwards; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-spin-slow { animation: spin-slow 2s linear infinite; }
+.animate-heart-beat { animation: heart-beat 0.6s ease-in-out; }
+.animate-water-splash { animation: water-splash 0.4s ease-out forwards; }
+.animate-dungeon-pulse { animation: dungeon-pulse 2s ease-in-out infinite; }
