@@ -31,8 +31,8 @@ router.get('/state', authenticate, async (req: AuthRequest, res: Response, next:
 // Evaluate tasks and update game state
 router.post('/evaluate', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { completed, total } = await evaluateTasks(req.userId!);
-    const damageResult = await dealDamageToEnemy(req.userId!);
+    const { completed, total, newlyCompleted } = await evaluateTasks(req.userId!);
+    const damageResult = await dealDamageToEnemy(req.userId!, newlyCompleted);
     const thirstMeter = await updateThirstMeter(req.userId!);
 
     const gameState = await prisma.gameState.findUnique({ where: { userId: req.userId! } });

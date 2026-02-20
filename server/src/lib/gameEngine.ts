@@ -50,7 +50,7 @@ export async function generateDailyTasks(userId: number): Promise<void> {
   });
 }
 
-export async function evaluateTasks(userId: number): Promise<{ completed: number; total: number }> {
+export async function evaluateTasks(userId: number): Promise<{ completed: number; total: number; newlyCompleted: number }> {
   const today = new Date();
   const dateStr = today.toISOString().split('T')[0];
   const date = new Date(dateStr + 'T00:00:00.000Z');
@@ -58,10 +58,10 @@ export async function evaluateTasks(userId: number): Promise<{ completed: number
   const tasks = await prisma.dailyTask.findMany({
     where: { userId, date },
   });
-  if (tasks.length === 0) return { completed: 0, total: 0 };
+  if (tasks.length === 0) return { completed: 0, total: 0, newlyCompleted: 0 };
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) return { completed: 0, total: tasks.length };
+  if (!user) return { completed: 0, total: tasks.length, newlyCompleted: 0 };
 
   // Get today's food logs
   const foodLogs = await prisma.foodLog.findMany({
@@ -82,6 +82,8 @@ export async function evaluateTasks(userId: number): Promise<{ completed: number
   const waterGoalGlasses = Math.ceil((user.waterGoalOz || 64) / 8);
 
   const mealTypes = new Set(foodLogs.map((l) => l.mealType));
+
+  let newlyCompleted = 0;
 
   for (const task of tasks) {
     let completed = false;
@@ -106,23 +108,32 @@ export async function evaluateTasks(userId: number): Promise<{ completed: number
         where: { id: task.id },
         data: { completed },
       });
+      // Only count tasks that just flipped from incomplete to complete
+      if (completed) newlyCompleted++;
     }
   }
 
   const updatedTasks = await prisma.dailyTask.findMany({ where: { userId, date } });
   const completedCount = updatedTasks.filter((t) => t.completed).length;
 
-  return { completed: completedCount, total: updatedTasks.length };
+  return { completed: completedCount, total: updatedTasks.length, newlyCompleted };
 }
 
-export async function dealDamageToEnemy(userId: number): Promise<{
+export async function dealDamageToEnemy(userId: number, newlyCompleted: number): Promise<{
   enemyDefeated: boolean;
   xpGained: number;
   coinsGained: number;
   leveledUp: boolean;
   newLevel?: number;
 }> {
-  const { completed, total } = await evaluateTasks(userId);
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+  const date = new Date(dateStr + 'T00:00:00.000Z');
+
+  const tasks = await prisma.dailyTask.findMany({ where: { userId, date } });
+  const completed = tasks.filter((t) => t.completed).length;
+  const total = tasks.length;
+
   const gameState = await prisma.gameState.findUnique({ where: { userId } });
   if (!gameState) return { enemyDefeated: false, xpGained: 0, coinsGained: 0, leveledUp: false };
 
@@ -130,7 +141,8 @@ export async function dealDamageToEnemy(userId: number): Promise<{
   const newEnemyHp = Math.max(0, gameState.enemyMaxHp - completed);
   const enemyDefeated = newEnemyHp === 0 && completed === total;
 
-  let xpGained = completed * 25;
+  // Only award XP for tasks that just became completed this evaluation
+  let xpGained = newlyCompleted * 25;
   let coinsGained = 0;
   let leveledUp = false;
   let newLevel = gameState.level;
