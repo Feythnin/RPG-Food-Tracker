@@ -499,7 +499,7 @@ function AddFoodModal({
                   <input
                     type="number"
                     value={form.calories}
-                    onChange={(e) => setForm({ ...form, calories: e.target.value, baseCalories: null, baseAmountG: null })}
+                    onChange={(e) => setForm({ ...form, calories: e.target.value })}
                     className="w-full bg-bg-primary border border-bg-hover rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent-gold/50"
                     placeholder="0"
                     min="0"
@@ -508,9 +508,20 @@ function AddFoodModal({
                 </div>
               </div>
               {form.baseCalories !== null && form.baseAmountG !== null && (
-                <p className="text-text-muted text-xs -mt-1">
-                  {form.baseCalories} cal per {form.baseAmountG}g &rarr; {form.servingAmount}{UNIT_LABELS[form.servingUnit]} = {form.calories} cal
-                </p>
+                <div className="flex items-center gap-2 -mt-1">
+                  <p className="text-text-muted text-xs">
+                    {form.baseCalories} cal per {form.baseAmountG}g &rarr; {form.servingAmount}{UNIT_LABELS[form.servingUnit]} = {Math.round(form.baseCalories * (parseFloat(form.servingAmount) || 0) * UNIT_TO_GRAMS[form.servingUnit] / form.baseAmountG)} cal
+                  </p>
+                  {form.calories !== String(Math.round(form.baseCalories * (parseFloat(form.servingAmount) || 0) * UNIT_TO_GRAMS[form.servingUnit] / form.baseAmountG)) && (
+                    <button
+                      type="button"
+                      onClick={() => recalcFromServing(form.servingAmount, form.servingUnit)}
+                      className="text-accent-blue text-xs hover:text-accent-blue/80 transition-colors shrink-0"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
