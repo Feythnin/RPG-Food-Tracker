@@ -3,6 +3,7 @@ import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { waterLogSchema, dateQuerySchema } from '../lib/validation';
 import { updateThirstMeter } from '../lib/gameEngine';
+import { getLocalDateStr, toDateKey } from '../lib/dates';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
@@ -11,8 +12,8 @@ const router = Router();
 router.post('/log', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { glasses, date: dateInput } = waterLogSchema.parse(req.body);
-    const dateStr = dateInput || new Date().toISOString().split('T')[0];
-    const date = new Date(dateStr + 'T00:00:00.000Z');
+    const dateStr = dateInput || getLocalDateStr();
+    const date = toDateKey(dateStr);
 
     const waterLog = await prisma.waterLog.create({
       data: { userId: req.userId!, date, glasses },
@@ -48,9 +49,9 @@ router.post('/log', authenticate, async (req: AuthRequest, res: Response, next: 
 // Get water logs for a date
 router.get('/logs', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const rawDate = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const rawDate = (req.query.date as string) || getLocalDateStr();
     const dateStr = dateQuerySchema.parse(rawDate);
-    const date = new Date(dateStr + 'T00:00:00.000Z');
+    const date = toDateKey(dateStr);
 
     const logs = await prisma.waterLog.findMany({
       where: { userId: req.userId!, date },

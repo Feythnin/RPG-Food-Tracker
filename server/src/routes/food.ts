@@ -3,6 +3,7 @@ import NodeCache from 'node-cache';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { foodLogSchema, favoriteFoodSchema, dateQuerySchema, barcodeSchema, usdaQuerySchema } from '../lib/validation';
+import { getLocalDateStr, toDateKey } from '../lib/dates';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
@@ -12,8 +13,8 @@ const usdaCache = new NodeCache({ stdTTL: 86400 }); // 24hr cache
 router.post('/log', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = foodLogSchema.parse(req.body);
-    const dateStr = data.date || new Date().toISOString().split('T')[0];
-    const date = new Date(dateStr + 'T00:00:00.000Z');
+    const dateStr = data.date || getLocalDateStr();
+    const date = toDateKey(dateStr);
 
     const foodLog = await prisma.foodLog.create({
       data: {
@@ -44,9 +45,9 @@ router.post('/log', authenticate, async (req: AuthRequest, res: Response, next: 
 // Get food logs for a date
 router.get('/logs', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const rawDate = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const rawDate = (req.query.date as string) || getLocalDateStr();
     const dateStr = dateQuerySchema.parse(rawDate);
-    const date = new Date(dateStr + 'T00:00:00.000Z');
+    const date = toDateKey(dateStr);
 
     const logs = await prisma.foodLog.findMany({
       where: { userId: req.userId!, date },

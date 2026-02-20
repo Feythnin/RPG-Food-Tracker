@@ -2,6 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { generateDailyTasks, evaluateTasks, dealDamageToEnemy, updateThirstMeter, weeklyReset } from '../lib/gameEngine';
+import { todayDateKey } from '../lib/dates';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
@@ -15,10 +16,7 @@ router.get('/state', authenticate, async (req: AuthRequest, res: Response, next:
     const gameState = await prisma.gameState.findUnique({ where: { userId: req.userId! } });
     if (!gameState) throw new AppError('Game state not found', 404);
 
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
-    const date = new Date(dateStr + 'T00:00:00.000Z');
-
+    const date = todayDateKey();
     const tasks = await prisma.dailyTask.findMany({
       where: { userId: req.userId!, date },
       orderBy: { id: 'asc' },
@@ -37,9 +35,7 @@ router.post('/evaluate', authenticate, async (req: AuthRequest, res: Response, n
 
     const gameState = await prisma.gameState.findUnique({ where: { userId: req.userId! } });
 
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
-    const date = new Date(dateStr + 'T00:00:00.000Z');
+    const date = todayDateKey();
     const tasks = await prisma.dailyTask.findMany({
       where: { userId: req.userId!, date },
       orderBy: { id: 'asc' },

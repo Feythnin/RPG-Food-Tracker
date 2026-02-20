@@ -1,4 +1,5 @@
 import prisma from './prisma';
+import { todayDateKey, getLocalDateStr, toDateKey } from './dates';
 
 const TIER_TASKS: Record<number, number> = { 1: 5, 2: 6, 3: 7 };
 
@@ -15,15 +16,16 @@ const TASK_POOL = [
 ];
 
 export async function generateDailyTasks(userId: number): Promise<void> {
-  const today = new Date();
-  const dateStr = today.toISOString().split('T')[0];
-  const date = new Date(dateStr + 'T00:00:00.000Z');
+  const date = todayDateKey();
 
   // Check if tasks already exist for today
   const existing = await prisma.dailyTask.findFirst({
     where: { userId, date },
   });
   if (existing) return;
+
+  // Before generating new tasks, process any unprocessed previous days
+  await processPreviousDays(userId);
 
   const gameState = await prisma.gameState.findUnique({ where: { userId } });
   if (!gameState) return;
@@ -50,10 +52,62 @@ export async function generateDailyTasks(userId: number): Promise<void> {
   });
 }
 
+async function processPreviousDays(userId: number): Promise<void> {
+  const today = todayDateKey();
+
+  // Find all past days with tasks that haven't been processed for health loss
+  const pastTasks = await prisma.dailyTask.findMany({
+    where: {
+      userId,
+      date: { lt: today },
+    },
+    orderBy: { date: 'asc' },
+  });
+
+  if (pastTasks.length === 0) return;
+
+  // Group by date
+  const byDate = new Map<string, typeof pastTasks>();
+  for (const task of pastTasks) {
+    const key = getLocalDateStr(task.date);
+    if (!byDate.has(key)) byDate.set(key, []);
+    byDate.get(key)!.push(task);
+  }
+
+  const gameState = await prisma.gameState.findUnique({ where: { userId } });
+  if (!gameState) return;
+
+  let health = gameState.health;
+
+  for (const [, tasks] of byDate) {
+    const completed = tasks.filter((t) => t.completed).length;
+    const total = tasks.length;
+
+    // Lose a heart if fewer than half tasks completed
+    if (completed < Math.ceil(total / 2) && health > 0) {
+      health--;
+    }
+  }
+
+  // Update health if it changed, then delete old tasks
+  if (health !== gameState.health) {
+    await prisma.gameState.update({
+      where: { userId },
+      data: { health },
+    });
+  }
+
+  // Clean up old tasks
+  await prisma.dailyTask.deleteMany({
+    where: {
+      userId,
+      date: { lt: today },
+    },
+  });
+}
+
 export async function evaluateTasks(userId: number): Promise<{ completed: number; total: number; newlyCompleted: number }> {
-  const today = new Date();
-  const dateStr = today.toISOString().split('T')[0];
-  const date = new Date(dateStr + 'T00:00:00.000Z');
+  const date = todayDateKey();
 
   const tasks = await prisma.dailyTask.findMany({
     where: { userId, date },
@@ -126,9 +180,7 @@ export async function dealDamageToEnemy(userId: number, newlyCompleted: number):
   leveledUp: boolean;
   newLevel?: number;
 }> {
-  const today = new Date();
-  const dateStr = today.toISOString().split('T')[0];
-  const date = new Date(dateStr + 'T00:00:00.000Z');
+  const date = todayDateKey();
 
   const tasks = await prisma.dailyTask.findMany({ where: { userId, date } });
   const completed = tasks.filter((t) => t.completed).length;
@@ -209,9 +261,7 @@ export async function processEndOfDay(userId: number): Promise<{ healthLost: boo
 }
 
 export async function updateThirstMeter(userId: number): Promise<number> {
-  const today = new Date();
-  const dateStr = today.toISOString().split('T')[0];
-  const date = new Date(dateStr + 'T00:00:00.000Z');
+  const date = todayDateKey();
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const waterLogs = await prisma.waterLog.findMany({ where: { userId, date } });
@@ -243,10 +293,6 @@ export async function weeklyReset(userId: number): Promise<void> {
   const daysSinceStart = Math.floor((now.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
 
   if (daysSinceStart < 7) return;
-
-  // Record the week
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6);
 
   // If health reached 0, restart level
   const restartLevel = gameState.health <= 0;

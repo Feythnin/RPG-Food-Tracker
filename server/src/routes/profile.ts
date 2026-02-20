@@ -3,6 +3,7 @@ import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { profileSetupSchema, weighInSchema } from '../lib/validation';
 import { calculateTDEE, calculateDailyCalories, calculateProteinGoal } from '../lib/calories';
+import { getLocalDateStr, toDateKey } from '../lib/dates';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
@@ -81,12 +82,12 @@ router.post('/weigh-in', authenticate, async (req: AuthRequest, res: Response, n
     const { weight } = weighInSchema.parse(req.body);
     const today = new Date();
 
-    if (today.getUTCDay() !== 6) {
+    if (today.getDay() !== 6) {
       throw new AppError('Weigh-ins are only allowed on Saturdays', 400);
     }
 
-    const dateStr = today.toISOString().split('T')[0];
-    const date = new Date(dateStr + 'T00:00:00.000Z');
+    const dateStr = getLocalDateStr(today);
+    const date = toDateKey(dateStr);
 
     const weighIn = await prisma.weighIn.upsert({
       where: { userId_date: { userId: req.userId!, date } },

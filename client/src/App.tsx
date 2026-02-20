@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
+import { useMe } from './hooks/useAuth';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SetupWizard from './pages/SetupWizard';
@@ -15,6 +16,16 @@ import AppLayout from './components/layout/AppLayout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
+  const { isLoading } = useMe();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-amber-400 text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }

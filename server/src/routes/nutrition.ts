@@ -2,6 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { dateQuerySchema, periodSchema } from '../lib/validation';
+import { getLocalDateStr, toDateKey } from '../lib/dates';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ const router = Router();
 router.get('/summary', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const period = periodSchema.parse(req.query.period || 'day');
-    const rawDate = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const rawDate = (req.query.date as string) || getLocalDateStr();
     const dateStr = dateQuerySchema.parse(rawDate);
     const endDate = new Date(dateStr + 'T23:59:59.999Z');
 
@@ -88,7 +89,7 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response, nex
 router.get('/water-summary', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const period = periodSchema.parse(req.query.period || 'week');
-    const rawDate = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const rawDate = (req.query.date as string) || getLocalDateStr();
     const dateStr = dateQuerySchema.parse(rawDate);
     const endDate = new Date(dateStr + 'T23:59:59.999Z');
 
