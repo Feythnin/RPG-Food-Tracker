@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { getLocalDateStr } from '../lib/dates';
 import {
   useFoodLogs,
   useLogFood,
@@ -113,7 +114,7 @@ const MEAL_TYPES: { key: MealType; label: string; icon: string }[] = [
 // ---- Helpers ----
 
 function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
+  return getLocalDateStr();
 }
 
 interface FormState {
@@ -860,7 +861,7 @@ export default function FoodLog() {
   function navigateDate(delta: number) {
     const d = new Date(selectedDate + 'T00:00:00');
     d.setDate(d.getDate() + delta);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate(getLocalDateStr(d));
   }
 
   const isToday = selectedDate === todayStr();

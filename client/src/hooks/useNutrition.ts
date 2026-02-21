@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
+import { getLocalDateStr } from '../lib/dates';
 
 export function useNutritionSummary(period: string = 'day', date?: string) {
-  const d = date || new Date().toISOString().split('T')[0];
+  const d = date || getLocalDateStr();
   return useQuery({
     queryKey: ['nutrition', 'summary', period, d],
     queryFn: async () => {
@@ -13,7 +14,7 @@ export function useNutritionSummary(period: string = 'day', date?: string) {
 }
 
 export function useWaterSummary(period: string = 'week', date?: string) {
-  const d = date || new Date().toISOString().split('T')[0];
+  const d = date || getLocalDateStr();
   return useQuery({
     queryKey: ['nutrition', 'water-summary', period, d],
     queryFn: async () => {

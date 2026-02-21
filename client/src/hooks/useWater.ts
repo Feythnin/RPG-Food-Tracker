@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
+import { getLocalDateStr } from '../lib/dates';
 
 export function useWaterLogs(date?: string) {
-  const d = date || new Date().toISOString().split('T')[0];
+  const d = date || getLocalDateStr();
   return useQuery({
     queryKey: ['water', 'logs', d],
     queryFn: async () => {

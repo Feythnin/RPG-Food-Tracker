@@ -6,6 +6,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import api from '../lib/api';
+import { getLocalDateStr } from '../lib/dates';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -54,7 +55,7 @@ export default function NutritionDashboard() {
   const [weighInStatus, setWeighInStatus] = useState<string | null>(null);
   const [weighInError, setWeighInError] = useState<string | null>(null);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateStr();
   const isSaturday = new Date().getDay() === 6;
 
   const { data: nutrition, isLoading: nutritionLoading } = useNutritionSummary(period, today);

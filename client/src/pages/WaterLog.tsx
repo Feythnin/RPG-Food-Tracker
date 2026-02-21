@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWaterLogs, useLogWater, useDeleteWater } from '../hooks/useWater';
 import { useEvaluateTasks } from '../hooks/useGame';
+import { getLocalDateStr } from '../lib/dates';
 
 // ---- Types ----
 
@@ -21,7 +22,7 @@ interface WaterData {
 // ---- Helpers ----
 
 function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
+  return getLocalDateStr();
 }
 
 function formatTime(iso: string): string {
