@@ -31,12 +31,14 @@ export function useEvaluateTasks() {
 
 export function useToggleTask() {
   const qc = useQueryClient();
+  const { setGameState } = useGameStore();
   return useMutation({
     mutationFn: async (taskId: number) => {
       const { data } = await api.post(`/game/task/${taskId}/toggle`);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setGameState(data.gameState);
       qc.invalidateQueries({ queryKey: ['game'] });
     },
   });

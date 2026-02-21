@@ -70,6 +70,12 @@ export async function generateDailyTasks(userId: number): Promise<void> {
       xpReward: 25,
     })),
   });
+
+  // Set enemy HP to match total task count for the day
+  await prisma.gameState.update({
+    where: { userId },
+    data: { enemyHp: selected.length, enemyMaxHp: selected.length },
+  });
 }
 
 async function processPreviousDays(userId: number): Promise<void> {
@@ -214,8 +220,8 @@ export async function dealDamageToEnemy(userId: number, newlyCompleted: number):
   const gameState = await prisma.gameState.findUnique({ where: { userId } });
   if (!gameState) return { enemyDefeated: false, xpGained: 0, coinsGained: 0, leveledUp: false };
 
-  // Each completed task = 1 damage
-  const newEnemyHp = Math.max(0, gameState.enemyMaxHp - completed);
+  // Each completed task = 1 damage (enemy HP = total tasks - completed tasks)
+  const newEnemyHp = Math.max(0, total - completed);
   const enemyDefeated = newEnemyHp === 0 && completed === total;
 
   // Only award XP for tasks that just became completed this evaluation
@@ -248,9 +254,6 @@ export async function dealDamageToEnemy(userId: number, newlyCompleted: number):
     else newTier = 1;
   }
 
-  // New enemy HP based on tier
-  const newEnemyMaxHp = TIER_TASKS[newTier] || 5;
-
   await prisma.gameState.update({
     where: { userId },
     data: {
@@ -258,8 +261,8 @@ export async function dealDamageToEnemy(userId: number, newlyCompleted: number):
       xp: newXp,
       xpToNext,
       coins: gameState.coins + coinsGained,
-      enemyHp: enemyDefeated ? newEnemyMaxHp : newEnemyHp,
-      enemyMaxHp: enemyDefeated ? newEnemyMaxHp : gameState.enemyMaxHp,
+      enemyHp: newEnemyHp,
+      enemyMaxHp: total,
       dungeonTier: newTier,
     },
   });

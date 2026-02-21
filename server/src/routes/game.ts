@@ -65,12 +65,24 @@ router.post('/task/:id/toggle', authenticate, async (req: AuthRequest, res: Resp
       throw new AppError('This task cannot be toggled manually', 400);
     }
 
-    const updated = await prisma.dailyTask.update({
+    const wasCompleted = task.completed;
+    await prisma.dailyTask.update({
       where: { id },
-      data: { completed: !task.completed },
+      data: { completed: !wasCompleted },
     });
 
-    res.json({ task: updated });
+    // Re-evaluate and deal damage after toggle
+    const newlyCompleted = !wasCompleted ? 1 : 0;
+    const damageResult = await dealDamageToEnemy(req.userId!, newlyCompleted);
+    const gameState = await prisma.gameState.findUnique({ where: { userId: req.userId! } });
+
+    const date = todayDateKey();
+    const tasks = await prisma.dailyTask.findMany({
+      where: { userId: req.userId!, date },
+      orderBy: { id: 'asc' },
+    });
+
+    res.json({ gameState, tasks, combat: damageResult });
   } catch (err) { next(err); }
 });
 
